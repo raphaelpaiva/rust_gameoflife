@@ -1,7 +1,7 @@
 
 extern crate bmp;
 
-use std::path::Path;
+use std::{collections::HashSet, path::Path};
 use rand::Rng;
 
 const DIRECTIONS: [(i32, i32); 8] = [
@@ -14,16 +14,23 @@ pub struct GameOfLife {
   board: Board,
   paused: bool,
   finished: bool,
-  generation: u32
+  generation: u32,
+  cells_to_analyze: HashSet<(i32, i32)>
 }
+
 
 impl GameOfLife {
   pub fn new(board: Board) -> Self {
+    let mut cells_to_analyze: HashSet<(i32, i32)> = HashSet::new();
+
+    initial_analysis(&board, &mut cells_to_analyze);
+
     return GameOfLife {
       board: board,
       paused: false,
       finished: false,
-      generation: 0
+      generation: 0,
+      cells_to_analyze: cells_to_analyze
     }
   }
 
@@ -32,32 +39,44 @@ impl GameOfLife {
     let height = self.board.get_height();
     
     let mut new_board = Board::new(width, height, false);
+    let mut new_cells_to_analyze: HashSet< (i32, i32) > = HashSet::new();
 
-    let mut i = 0;
-    while i < width {
-      let mut j = 0;
-      while j < height {
-        let cell_alive = self.board.get(i, j);
-        let live_neighbours = self.count_neighbours(i as i32, j as i32);
+    for cell in &self.cells_to_analyze {
+      let mut ni = cell.0;
+      let mut nj = cell.1;
 
-        if cell_alive {
-          if live_neighbours < 2 || live_neighbours > 3 {
-            new_board.set(i, j, false);
-          } else {
-            new_board.set(i, j, true);
-          }
-        } else {
-          if live_neighbours == 3 {
-            new_board.set(i, j, true);
-          }
-        }
-        j += 1;
+      if ni <= 0 {
+        ni = 0;
       }
-      i += 1;
+
+      if nj <= 0 {
+        nj = 0;
+      }
+
+      let i = ni as usize % self.board.get_width();
+      let j = nj as usize % self.board.get_height();
+      
+      let cell_alive = self.board.get(i, j);
+      let live_neighbours = self.count_neighbours(i as i32, j as i32);
+
+      if cell_alive {
+        if live_neighbours < 2 || live_neighbours > 3 {
+          new_board.set(i, j, false);
+        } else {
+          new_board.set(i, j, true);
+          insert_me_and_neighbours(&mut new_cells_to_analyze, i, j);
+        }
+      } else {
+        if live_neighbours == 3 {
+          new_board.set(i, j, true);
+          insert_me_and_neighbours(&mut new_cells_to_analyze, i, j);
+        }
+      }
     }
 
     self.generation += 1;
     self.board = new_board;
+    self.cells_to_analyze = new_cells_to_analyze;
   }
 
   fn count_neighbours(&self, x: i32, y: i32) -> u32 {
@@ -80,7 +99,13 @@ impl GameOfLife {
   }
 
   pub fn reset(&mut self) {
-    self.board = Board::random(self.board.width, self.board.height, 0.5);
+    let new_board = Board::random(self.board.width, self.board.height, 0.5);
+    let mut new_cells_to_analyze: HashSet<(i32, i32)> = HashSet::new();
+    
+    initial_analysis(&new_board, &mut new_cells_to_analyze);
+    
+    self.board = new_board;
+    self.cells_to_analyze = new_cells_to_analyze;
     self.generation = 0;
   }
 
@@ -115,6 +140,35 @@ impl GameOfLife {
   pub fn is_finished(&self) -> bool {
     return self.finished;
   }
+
+  pub fn get_analyzed_cell_count(&self) -> usize {
+    return self.cells_to_analyze.len();
+  }
+}
+
+fn initial_analysis(board: &Board, cells_to_analyze: &mut HashSet<(i32, i32)>) {
+    let mut i = 0;
+    while i < board.get_width() {
+      let mut j = 0;
+      while j < board.get_height() {
+        if board.get(i, j) {
+          insert_me_and_neighbours(cells_to_analyze, i, j);
+        }
+        j += 1;
+      }
+      i += 1;
+    }
+}
+
+fn insert_me_and_neighbours(cells_to_analyze: &mut HashSet<(i32, i32)>, i: usize, j: usize) {
+    cells_to_analyze.insert( (i as i32, j as i32) );
+    
+    for dir in DIRECTIONS {
+      let nx = i as i32 + dir.0;
+      let nj = j as i32 + dir.1;
+
+      cells_to_analyze.insert( (nx, nj) );
+    }
 }
 
 pub struct Board {

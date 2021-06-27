@@ -32,7 +32,7 @@ const OPTIONS: Options = Options {
   window_width:  1000,
   window_height: 1000,
   window_title: "Rusty GOL",
-  cell_size: 5
+  cell_size: 1
 };
 
 
@@ -61,6 +61,7 @@ pub fn plot() {
     
     let initial_board = Board::random(board_width, board_height, 0.3);
     let mut game = GameOfLife::new(initial_board);
+    
     game.pause();
 
     canvas.set_draw_color(Color::WHITE);
@@ -84,6 +85,8 @@ fn render(canvas: &mut Canvas<Window>, game: &mut GameOfLife, frame_start_time: 
     canvas.set_draw_color(Color::WHITE);
     canvas.clear();
     
+    let cells_to_analyze = game.get_analyzed_cell_count();
+
     if !game.is_paused() {
       game.update();
     }
@@ -102,8 +105,14 @@ fn render(canvas: &mut Canvas<Window>, game: &mut GameOfLife, frame_start_time: 
       i += 1;
     }
     let frame_duration = frame_start_time.elapsed();
-    let fps = 1000 / frame_duration.as_millis();
-    let hud_text = format!("{}x{} Gen:{} FT: {:?} FPS: {}", game.get_board().get_width(), game.get_board().get_height(), game.get_genereation(), frame_duration, fps);
+    let frame_duration_millis = frame_duration.as_millis();
+    let mut fps = 0;
+
+    if frame_duration_millis > 0 {
+      fps = 1000 / frame_duration_millis;
+    }
+
+    let hud_text = format!("{}x{} Gen:{} FT: {:?} FPS: {} Processed Cells: {}", game.get_board().get_width(), game.get_board().get_height(), game.get_genereation(), frame_duration, fps, cells_to_analyze);
     
     render_hud(&font, hud_text, &texture_creator, canvas);
     
@@ -136,7 +145,7 @@ fn render_hud(font: &Font, hud_text: String, texture_creator: &TextureCreator<Wi
           .solid(Color::MAGENTA)
           .expect("Error creating font surface!");
     let texture = texture_creator.create_texture_from_surface(&text).expect("Error creating text texture");
-    canvas.copy(&texture, None, Rect::new(0, 0, 500,  50)).unwrap();
+    canvas.copy(&texture, None, Rect::new(0, 0, 600,  50)).unwrap();
 }
 
 fn main() {
