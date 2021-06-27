@@ -1,7 +1,7 @@
 
 extern crate bmp;
 
-use std::{collections::HashSet, path::Path};
+use std::{collections::HashSet, hash::Hash, path::Path};
 use rand::Rng;
 
 const DIRECTIONS: [(i32, i32); 8] = [
@@ -10,6 +10,55 @@ const DIRECTIONS: [(i32, i32); 8] = [
   (1, -1), (1,  0), (1,  1),
 ];
 
+#[derive(Hash, Eq, PartialEq, Debug, Clone, Copy)]
+pub struct Point2D {
+  x: i32,
+  y: i32
+}
+
+impl Point2D {
+  pub fn new(x: i32, y: i32) -> Self {
+    return Point2D {x, y};
+  }
+}
+
+#[derive(Hash, Eq, PartialEq, Debug, Clone, Copy)]
+pub struct Cell {
+  location: Point2D,
+  state: bool
+}
+
+impl Cell {
+  pub fn new(location: Point2D, alive: bool) -> Self {
+    return Cell {
+      location: location,
+      state: alive
+    }
+  }
+
+  pub fn new_alive(location: Point2D) -> Self {
+    return Cell {
+      location: location,
+      state: true
+    }
+  }
+
+  pub fn new_dead(location: Point2D) -> Self {
+    return Cell {
+      location: location,
+      state: false
+    }
+  }
+
+  pub fn is_alive(&self) -> bool {
+    return self.state;
+  }
+
+  pub fn set_state(&mut self, state: bool) {
+    self.state = state;
+  }
+}
+
 pub struct GameOfLife {
   board: Board,
   paused: bool,
@@ -17,7 +66,6 @@ pub struct GameOfLife {
   generation: u32,
   cells_to_analyze: HashSet<(i32, i32)>
 }
-
 
 impl GameOfLife {
   pub fn new(board: Board) -> Self {
@@ -56,10 +104,10 @@ impl GameOfLife {
       let i = ni as usize % self.board.get_width();
       let j = nj as usize % self.board.get_height();
       
-      let cell_alive = self.board.get(i, j);
+      let cell = self.board.get(i, j);
       let live_neighbours = self.count_neighbours(i as i32, j as i32);
 
-      if cell_alive {
+      if cell.is_alive() {
         if live_neighbours < 2 || live_neighbours > 3 {
           new_board.set(i, j, false);
         } else {
@@ -90,7 +138,7 @@ impl GameOfLife {
       let nx = (x + direction.0) as u32 % width;
       let ny = (y + direction.1) as u32 % height;
 
-      if self.board.data[nx as usize][ny as usize] {
+      if self.board.get(nx as usize, ny as usize).is_alive() {
         neighbours += 1;
       }
     }
@@ -151,7 +199,7 @@ fn initial_analysis(board: &Board, cells_to_analyze: &mut HashSet<(i32, i32)>) {
     while i < board.get_width() {
       let mut j = 0;
       while j < board.get_height() {
-        if board.get(i, j) {
+        if board.get(i, j).is_alive() {
           insert_me_and_neighbours(cells_to_analyze, i, j);
         }
         j += 1;
@@ -174,41 +222,67 @@ fn insert_me_and_neighbours(cells_to_analyze: &mut HashSet<(i32, i32)>, i: usize
 pub struct Board {
   width: usize,
   height: usize,
-  data: Vec<Vec<bool>>
+  data: Vec<Vec<Cell>>
 }
 
 impl Board {
   pub fn new(width: usize, height: usize, default: bool) -> Self {
-    let vec = vec![vec![default; width]; height];
-    return Board {
-      width,
-      height,
-      data: vec
-    };
-  }
-
-  pub fn random(width: usize, height: usize, prob: f64) -> Self {
-    let mut vec = vec![vec![false; width]; height];
-
-    let mut rng = rand::thread_rng();
+    let mut lines: Vec<Vec<Cell>> = Vec::new();
 
     let mut i = 0;
-    while i < width {
+    while i < height {
       let mut j = 0;
-      while j < height {
-        let rand_float = rng.gen::<f64>();
-        if rand_float < prob {
-          vec[i][j] = true;
-        }
+      let mut columns: Vec<Cell> = Vec::new();
+      
+      while j < width {
+        columns.push(Cell {
+          location: Point2D { x: j as i32, y: i as i32 },
+          state: default
+        });
+        
         j += 1;
       }
+
+      lines.push(columns);
       i += 1;
     }
 
     return Board {
       width,
       height,
-      data: vec
+      data: lines
+    };
+  }
+
+  pub fn random(width: usize, height: usize, prob: f64) -> Self {
+    let mut lines: Vec<Vec<Cell>> = Vec::new();
+    let mut rng = rand::thread_rng();
+
+    let mut i = 0;
+    while i < height {
+      let mut j = 0;
+      let mut columns: Vec<Cell> = Vec::new();
+      
+      while j < width {
+        let rand_float = rng.gen::<f64>();
+        let is_alive = rand_float < prob;
+        
+        columns.push(Cell {
+          location: Point2D { x: j as i32, y: i as i32},
+          state: is_alive
+        });
+        
+        j += 1;
+      }
+
+      lines.push(columns);
+      i += 1;
+    }
+
+    return Board {
+      width,
+      height,
+      data: lines
     };
   }
 
@@ -218,26 +292,37 @@ impl Board {
     let width  = scenario.get_width() as usize;
     let height = scenario.get_height() as usize;
     
-    let mut vec = vec![vec![false; width]; height];
+    let mut lines: Vec<Vec<Cell>> = Vec::new();
 
     let mut i = 0;
-    while i < scenario.get_width() {
+    while i < scenario.get_height() {
       let mut j = 0;
-      while j < scenario.get_height() {
-        let pixel = scenario.get_pixel(i, j);
+      let mut columns: Vec<Cell> = Vec::new();
+      
+      while j < scenario.get_width() {
+        let pixel = scenario.get_pixel(j, i);
+        
         if pixel.r == 0 && pixel.g == 0 && pixel.b == 0 {
-          vec[i as usize][j as usize] = true;
+          columns.push(
+            Cell::new_alive(Point2D { x: j as i32, y: i as i32 })
+          );
+        } else {
+          columns.push(
+            Cell::new_dead(Point2D { x: j as i32, y: i as i32 })
+          );
         }
         
         j += 1;
       }
+      
+      lines.push(columns);
       i += 1;
     }
 
     return Board {
       width,
       height,
-      data: vec
+      data: lines
     }
   }
 
@@ -249,12 +334,29 @@ impl Board {
     return self.width;
   }
 
-  pub fn get(&self, x: usize, y: usize) -> bool {
-    return self.data[x][y];
+  pub fn get(&self, x: usize, y: usize) -> Cell {
+    return self.data[y][x];
   }
 
-  pub fn set(&mut self, x: usize, y: usize, value: bool) {
-    self.data[x][y] = value;
+  pub fn set(&mut self, x: usize, y: usize, state: bool) {
+    self.data[y][x].set_state(state);
   }
 }
 
+mod test {
+  use super::*;
+
+  #[test]
+  fn the_worst_test_code_ever() {
+    println!("Point: {:?}", Point2D::new(0, 0));
+    assert_eq!(Point2D::new(0, 0), Point2D::new(0, 0));
+    assert_ne!(Point2D::new(10, 0), Point2D::new(230, 0));
+
+    let center_alive = Cell::new_alive(Point2D::new(0, 0));
+
+    println!("Cell: {:?}", center_alive);
+    assert_eq!(center_alive, Cell::new_alive(Point2D::new(0, 0)));
+    assert_ne!(center_alive, Cell::new_dead(Point2D::new(0, 0)));
+    assert_ne!(center_alive, Cell::new_alive(Point2D::new(10, 0)));
+  }
+}

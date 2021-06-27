@@ -32,7 +32,7 @@ const OPTIONS: Options = Options {
   window_width:  1000,
   window_height: 1000,
   window_title: "Rusty GOL",
-  cell_size: 1
+  cell_size: 5
 };
 
 
@@ -55,10 +55,10 @@ pub fn plot() {
 
     let font = ttf_context.load_font(Path::new("D-DIN.ttf"), 128).expect("Error Loading font!");
 
-    //let initial_board = Board::from_bmp(Path::new("scenarios/blinker.bmp"));
     let board_width = (OPTIONS.window_width / OPTIONS.cell_size) as usize;
     let board_height = (OPTIONS.window_height / OPTIONS.cell_size) as usize;
     
+    //let initial_board = Board::from_bmp(Path::new("scenarios/blinker.bmp"));
     let initial_board = Board::random(board_width, board_height, 0.3);
     let mut game = GameOfLife::new(initial_board);
     
@@ -96,7 +96,7 @@ fn render(canvas: &mut Canvas<Window>, game: &mut GameOfLife, frame_start_time: 
     while i < game.get_board().get_width() {
       let mut j = 0;
       while j < game.get_board().get_height() {
-        if game.get_board().get(i, j) {
+        if game.get_board().get(i, j).is_alive() {
           canvas.fill_rect(Rect::new((i as u32 * OPTIONS.cell_size) as i32, (j as u32 * OPTIONS.cell_size) as i32, OPTIONS.cell_size, OPTIONS.cell_size)).expect("Could not Draw cell");
         }
     
