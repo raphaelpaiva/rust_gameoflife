@@ -344,7 +344,7 @@ impl Board {
 }
 
 mod test {
-  use super::*;
+    use crate::game::{Cell, Point2D};
 
   #[test]
   fn the_worst_test_code_ever() {
