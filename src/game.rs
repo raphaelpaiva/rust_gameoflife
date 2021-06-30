@@ -222,20 +222,19 @@ fn insert_me_and_neighbours(cells_to_analyze: &mut HashSet<(i32, i32)>, i: usize
 pub struct Board {
   width: usize,
   height: usize,
-  data: Vec<Vec<Cell>>
+  data: Vec<Cell>
 }
 
 impl Board {
   pub fn new(width: usize, height: usize, default: bool) -> Self {
-    let mut lines: Vec<Vec<Cell>> = Vec::new();
+    let mut cells: Vec<Cell> = Vec::new();
 
     let mut i = 0;
     while i < height {
       let mut j = 0;
-      let mut columns: Vec<Cell> = Vec::new();
       
       while j < width {
-        columns.push(Cell {
+        cells.push(Cell {
           location: Point2D { x: j as i32, y: i as i32 },
           state: default
         });
@@ -243,31 +242,29 @@ impl Board {
         j += 1;
       }
 
-      lines.push(columns);
       i += 1;
     }
 
     return Board {
       width,
       height,
-      data: lines
+      data: cells
     };
   }
 
   pub fn random(width: usize, height: usize, prob: f64) -> Self {
-    let mut lines: Vec<Vec<Cell>> = Vec::new();
+    let mut cells: Vec<Cell> = Vec::new();
     let mut rng = rand::thread_rng();
 
     let mut i = 0;
     while i < height {
       let mut j = 0;
-      let mut columns: Vec<Cell> = Vec::new();
       
       while j < width {
         let rand_float = rng.gen::<f64>();
         let is_alive = rand_float < prob;
         
-        columns.push(Cell {
+        cells.push(Cell {
           location: Point2D { x: j as i32, y: i as i32},
           state: is_alive
         });
@@ -275,14 +272,13 @@ impl Board {
         j += 1;
       }
 
-      lines.push(columns);
       i += 1;
     }
 
     return Board {
       width,
       height,
-      data: lines
+      data: cells
     };
   }
 
@@ -292,37 +288,35 @@ impl Board {
     let width  = scenario.get_width() as usize;
     let height = scenario.get_height() as usize;
     
-    let mut lines: Vec<Vec<Cell>> = Vec::new();
+    let mut cells: Vec<Cell> = Vec::new();
 
     let mut i = 0;
     while i < scenario.get_height() {
       let mut j = 0;
-      let mut columns: Vec<Cell> = Vec::new();
       
       while j < scenario.get_width() {
         let pixel = scenario.get_pixel(j, i);
         
         if pixel.r == 0 && pixel.g == 0 && pixel.b == 0 {
-          columns.push(
+          cells.push(
             Cell::new_alive(Point2D { x: j as i32, y: i as i32 })
           );
         } else {
-          columns.push(
+          cells.push(
             Cell::new_dead(Point2D { x: j as i32, y: i as i32 })
           );
         }
         
         j += 1;
       }
-      
-      lines.push(columns);
+
       i += 1;
     }
 
     return Board {
       width,
       height,
-      data: lines
+      data: cells
     }
   }
 
@@ -335,11 +329,11 @@ impl Board {
   }
 
   pub fn get(&self, x: usize, y: usize) -> Cell {
-    return self.data[y][x];
+    return self.data[self.width * y + x];
   }
 
   pub fn set(&mut self, x: usize, y: usize, state: bool) {
-    self.data[y][x].set_state(state);
+    self.data[self.width * y + x].set_state(state);
   }
 }
 
