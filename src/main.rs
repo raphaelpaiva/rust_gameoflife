@@ -22,17 +22,14 @@ fn main() {
 
   let board_width = (OPTIONS.window_width / OPTIONS.cell_size) as usize;
   let board_height = (OPTIONS.window_height / OPTIONS.cell_size) as usize;
-
-  println!("{:?}", args);
-  
-  let mut initial_board: Option<Board> = None;
-  if args.len() < 2 {
-    initial_board = Some(Board::random(board_width, board_height, 0.3));
+   
+  let initial_board: Board = if args.len() < 2 {
+    Board::random(board_width, board_height, 0.3)
   } else {
-    initial_board = Some(Board::from_bmp(Path::new(args[1].as_str())));
-  }
+    Board::from_bmp(Path::new(args[1].as_str()))
+  };
   
-  let mut game = GameOfLife::new(initial_board.expect("Error loading Initial Board!"));
+  let mut game = GameOfLife::new(initial_board);
   
   Engine::new(OPTIONS, &mut game).run();
 }
