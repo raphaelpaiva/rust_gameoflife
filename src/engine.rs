@@ -12,7 +12,7 @@ use sdl2::render::Canvas;
 use sdl2::video::Window;
 use sdl2::rect::Rect;
 use sdl2::pixels::Color;
-use sdl2::ttf::{Sdl2TtfContext};
+use sdl2::ttf::{Font};
 
 use crate::game::{GameOfLife};
 
@@ -26,7 +26,6 @@ pub struct Options {
 pub struct Engine<'a> {
   options: Options,
   sdl_context: Sdl,
-  ttf_context: Box<Sdl2TtfContext>,
   canvas: Canvas<Window>,
   game: &'a mut GameOfLife
 }
@@ -42,23 +41,21 @@ impl<'a> Engine<'a> {
         .unwrap();
     
     let canvas = window.into_canvas().build().unwrap();
-    let ttf_context_raw = sdl2::ttf::init().map_err(|e| e.to_string()).expect("Error Loading ttf context!");
-    let ttf_context = Box::new(ttf_context_raw);
-
 
     return Engine {
       options: options,
       sdl_context: sdl_context,
-      ttf_context: ttf_context,
       canvas: canvas,
       game: game
     }
   }
 
-  pub fn run(&mut self) {   
+  pub fn run(&mut self) {
+    let ttf_context = sdl2::ttf::init().map_err(|e| e.to_string()).expect("Error Loading ttf context!");
+    let font = ttf_context.load_font(Path::new("D-DIN.ttf"), 128).expect("Error Loading font");
+
     self.canvas.set_draw_color(Color::WHITE);
     self.canvas.clear();
-    
     
     'game_loop: loop {
       let cells_to_analyze = self.game.get_analyzed_cell_count();
@@ -91,7 +88,7 @@ impl<'a> Engine<'a> {
       );
       
       //println!("{}", hud_text);
-      //self.render_hud(hud_text);
+      self.render_hud(&font, hud_text);
       self.canvas.present();
     }
   }
@@ -142,8 +139,7 @@ impl<'a> Engine<'a> {
     }
 }
 
-  fn render_hud(&mut self, hud_text: String) {
-    let font = self.ttf_context.load_font(Path::new("D-DIN.ttf"), 128).expect("Error Loading font!"); //TODO: Load one time
+  fn render_hud(&mut self, font: &Font, hud_text: String) {
     let texture_creator = self.canvas.texture_creator();
     
     let text = font.render(hud_text.as_str())
